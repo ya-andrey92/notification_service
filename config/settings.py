@@ -159,3 +159,29 @@ DJOSER = {
     'USER_CREATE_PASSWORD_RETYPE': True,
     'TOKEN_MODEL': None,
 }
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'base': {
+            'format': '[%(asctime)s] | [%(levelname)s] | %(message)s'
+        }
+    },
+    'handlers': {
+        'file': {
+            'class': 'logging.FileHandler',
+            'level': 'INFO',
+            'formatter': 'base',
+            'filename': 'logs/info.log',
+            'mode': 'a',
+            'encoding': 'UTF-8',
+        }
+    },
+    'loggers': {
+        'root': {
+            'level': 'INFO',
+            'handlers': ['file'],
+        },
+    },
+}
