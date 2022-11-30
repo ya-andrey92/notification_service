@@ -45,6 +45,21 @@ services:
       - backend
     container_name: notification_service-redis_db
 
+  celery_worker:
+    restart: always
+    build:
+      context: .
+    command: celery -A config worker -l info
+    volumes:
+      - .:/app/
+    depends_on:
+      - db
+      - redis_db
+      - web
+    networks:
+      - backend
+    container_name: notification_service-celery_worker
+
 volumes:
   postgres_data:
   redis_data:
