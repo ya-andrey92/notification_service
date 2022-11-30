@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'djoser',
     'app_mailing.apps.AppMailingConfig',
     'app_user.apps.AppUserConfig',
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [
