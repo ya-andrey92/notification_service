@@ -28,7 +28,7 @@ class Message(models.Model):
 
     send_date = models.DateTimeField()
     status = models.IntegerField(choices=STATUS_CHOICES, blank=True, null=True)
-    mailing = models.ForeignKey(Mailing, on_delete=models.PROTECT, related_name='message')
+    mailing = models.ForeignKey(Mailing, on_delete=models.CASCADE, related_name='message')
     client = models.ForeignKey(Client, on_delete=models.SET_NULL, null=True, related_name='message')
 
     def __str__(self):

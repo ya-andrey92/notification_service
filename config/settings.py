@@ -183,5 +183,9 @@ LOGGING = {
             'level': 'INFO',
             'handlers': ['file'],
         },
+        'app_mailing': {
+            'level': 'INFO',
+            'handlers': ['file'],
+        },
     },
 }
