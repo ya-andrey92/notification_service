@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.validators import MinValueValidator, RegexValidator
+from django.core.validators import MinLengthValidator, RegexValidator
 from .validators import validate_time_zone
 
 
@@ -7,7 +7,7 @@ class Client(models.Model):
     """Клиент"""
     phone = models.CharField(
         max_length=11, unique=True,
-        validators=[MinValueValidator(limit_value=11),
+        validators=[MinLengthValidator(limit_value=11),
                     RegexValidator(r'7\d{10}',
                                    message='The phone number must be in the format 7ХХХХХХХХ')]
     )
@@ -24,7 +24,7 @@ class Client(models.Model):
 
 class OperatorCode(models.Model):
     """Код мобильного оператора"""
-    code = models.CharField(max_length=3, unique=True, validators=[MinValueValidator(limit_value=3)])
+    code = models.CharField(max_length=3, unique=True, validators=[MinLengthValidator(limit_value=3)])
 
     def __str__(self):
         return f'{self.id}: {self.code}'

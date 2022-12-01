@@ -179,7 +179,7 @@ LOGGING = {
         }
     },
     'loggers': {
-        'root': {
+        'app_user': {
             'level': 'INFO',
             'handlers': ['file'],
         },
