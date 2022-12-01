@@ -3,8 +3,8 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 import logging
-from .models import Client, OperatorCode
-from .serializers import ClientSerializer, OperatorCodeSerializer
+from .models import Client, OperatorCode, Tag
+from .serializers import ClientSerializer, OperatorCodeSerializer, TagSerializer
 from .paginations import CustomPagination
 
 logger = logging.getLogger(__name__)
@@ -28,3 +28,11 @@ class ClientViewSet(ModelViewSet):
         response = super().destroy(request, *args, **kwargs)
         logger.info(f'[client_id={instance.id}]: deleted client')
         return response
+
+
+class TagViewSet(ModelViewSet):
+    """Тэг клиента"""
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permission_classes = (IsAdminUser,)
+    pagination_class = CustomPagination

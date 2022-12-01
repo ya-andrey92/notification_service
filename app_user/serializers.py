@@ -2,7 +2,7 @@ from django.db import transaction
 from django.forms import model_to_dict
 from rest_framework import serializers
 import logging
-from .models import Client, OperatorCode
+from .models import Client, OperatorCode, Tag
 from .services import OperatorCodeDB
 
 logger = logging.getLogger(__name__)
@@ -34,4 +34,10 @@ class ClientSerializer(serializers.ModelSerializer):
 class OperatorCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = OperatorCode
+        fields = '__all__'
+
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
         fields = '__all__'
