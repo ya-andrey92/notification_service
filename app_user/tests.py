@@ -21,6 +21,9 @@ class AuthAPITestCase(APITestCase):
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
         return client
 
+    def _authorization_admin(self):
+        return self._authorization(self._username_admin)
+
     @classmethod
     def _create_users(cls) -> None:
         user = User.objects.create_user(username=cls._username_admin, password=cls._password)
@@ -63,22 +66,22 @@ class ClientTest(AuthAPITestCase):
         cls._create_users()
         cls._create_data_clients()
 
-    def test_endpoints_client_if_logout(self):
+    def test_get_endpoints_client_if_logout(self):
         response = self.client.get(self.__url_client)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_endpoints_client_if_login_user(self):
+    def test_get_endpoints_client_if_login_user(self):
         client = self._authorization(self._username.format(1))
         response = client.get(self.__url_client)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_endpoints_client_if_login_admin(self):
-        client = self._authorization(self._username_admin)
+    def test_get_endpoints_client_if_login_admin(self):
+        client = self._authorization_admin()
         response = client.get(self.__url_client)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_post_endpoints_client(self):
-        client = self._authorization(self._username_admin)
+        client = self._authorization_admin()
         tag = Tag.objects.first()
         data = {'phone': '70281234560', 'tag': tag.id, 'time_zone': 'Europe/Minsk'}
         code_cnt = OperatorCode.objects.count()
@@ -90,7 +93,7 @@ class ClientTest(AuthAPITestCase):
         self.assertEqual(client_cnt + 1, Client.objects.count())
 
     def test_patch_endpoints_client(self):
-        client = self._authorization(self._username_admin)
+        client = self._authorization_admin()
         code_cnt = OperatorCode.objects.count()
         client_obj = Client.objects.first()
 
@@ -102,6 +105,16 @@ class ClientTest(AuthAPITestCase):
         self.assertEqual(code_cnt + 1, OperatorCode.objects.count())
 
     def test_get_endpoints_client_code(self):
-        client = self._authorization(self._username_admin)
+        client = self._authorization_admin()
         response = client.get(self.__url_client_code)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_post_endpoints_client_check_validators(self):
+        client = self._authorization_admin()
+        tag = Tag.objects.first()
+        data = {'phone': '6028123456', 'tag': tag.id, 'time_zone': 'Europe/Min'}
+        response = client.post(self.__url_client, data=data)
+        data = response.json()
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(len(data.get('phone')), 2)
+        self.assertTrue(data.get('time_zone'))
