@@ -134,6 +134,11 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+PROBE_SERVER_TOKEN = env.str('PROBE_SERVER_TOKEN')
+PROBE_SERVER_URL = env.str('PROBE_SERVER_URL')
+PROBE_SERVER_TIMEOUT = env.int('PROBE_SERVER_TIMEOUT')
+
+
 CELERY_BROKER_URL = 'redis://redis_db'
 
 REST_FRAMEWORK = {
