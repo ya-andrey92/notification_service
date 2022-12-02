@@ -1,9 +1,12 @@
 from django.urls import reverse
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
 import random
+import uuid
 from .models import Client, OperatorCode, Tag
+from app_mailing.models import Mailing, Message
 
 
 class AuthAPITestCase(APITestCase):
@@ -54,6 +57,44 @@ class AuthAPITestCase(APITestCase):
                             tag=tag, time_zone='Europe/Minsk')
             clients.append(client)
         Client.objects.bulk_create(clients)
+
+    @staticmethod
+    def _create_mailing():
+        mailing_statuses = (i for i, _ in Mailing.STATUS_CHOICES)
+        mailings = []
+
+        for mailing_status in mailing_statuses:
+            for i in range(2):
+                start_date = timezone.now() + timezone.timedelta(hours=mailing_status)
+                finish_date = start_date + timezone.timedelta(hours=1)
+
+                mailings.append(
+                    Mailing(
+                        start_date=start_date,
+                        finish_date=finish_date,
+                        text=f'Test{mailing_status}-{i}',
+                        status=mailing_status,
+                        task_uuid=uuid.uuid4()
+                    )
+                )
+        Mailing.objects.bulk_create(mailings)
+        return mailings
+
+    @staticmethod
+    def _create_messages(mailings):
+        client = Client.objects.first()
+        messages = []
+
+        for mailing in mailings[::2]:
+            messages.append(
+                Message(
+                    send_date=timezone.now(),
+                    mailing=mailing,
+                    client=client,
+                    status=1
+                )
+            )
+        Message.objects.bulk_create(messages)
 
 
 class ClientTest(AuthAPITestCase):

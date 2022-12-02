@@ -3,9 +3,10 @@ from django.utils import timezone
 from rest_framework import status
 import uuid
 from unittest import mock
+from requests.exceptions import HTTPError, ConnectionError, Timeout
 from app_user.tests import AuthAPITestCase
 from .models import Mailing, Message
-from app_user.models import Client
+from .services import MsgAPI
 
 
 class MockTask:
@@ -13,6 +14,29 @@ class MockTask:
 
     def __init__(self):
         self.id = uuid.uuid4()
+
+
+class MockResponseMsgApi:
+    """Mock для  MsgAPI"""
+
+    def __init__(self, method: str, status_code: int = None, name_error: str = ''):
+        self.method = method
+        self.status_code = status_code
+        self.name_error = name_error
+
+    def json(self):
+        if self.method == 'post' and self.status_code == 200:
+            return {'code': 0, 'message': 'OK'}
+
+    def raise_for_status(self):
+        if self.status_code is not None and self.status_code == 400:
+            raise HTTPError
+        elif self.name_error == MsgAPI.except_names[0]:
+            raise Timeout
+        elif self.name_error == MsgAPI.except_names[1]:
+            raise HTTPError
+        elif self.name_error == MsgAPI.except_names[2]:
+            raise ConnectionError
 
 
 class MailingTest(AuthAPITestCase):
@@ -28,45 +52,6 @@ class MailingTest(AuthAPITestCase):
         mailings = self._create_mailing()
         self._create_messages(mailings)
         self.client_admin = self._authorization_admin()
-
-    @staticmethod
-    def _create_mailing():
-        mailing_statuses = (i for i, _ in Mailing.STATUS_CHOICES)
-        mailings = []
-
-        for mailing_status in mailing_statuses:
-            for i in range(2):
-                start_date = timezone.now() + timezone.timedelta(hours=mailing_status)
-                finish_date = start_date + timezone.timedelta(hours=1)
-                task = MockTask()
-
-                mailings.append(
-                    Mailing(
-                        start_date=start_date,
-                        finish_date=finish_date,
-                        text=f'Test{mailing_status}-{i}',
-                        status=mailing_status,
-                        task_uuid=task.id
-                    )
-                )
-        Mailing.objects.bulk_create(mailings)
-        return mailings
-
-    @staticmethod
-    def _create_messages(mailings):
-        client = Client.objects.first()
-        messages = []
-
-        for mailing in mailings[::2]:
-            messages.append(
-                Message(
-                    send_date=timezone.now(),
-                    mailing=mailing,
-                    client=client,
-                    status=1
-                )
-            )
-        Message.objects.bulk_create(messages)
 
     def test_post_endpoints_if_finish_date_less_current_date(self):
         finish_date = timezone.now()
@@ -104,10 +89,12 @@ class MailingTest(AuthAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(task.id, mailing.task_uuid)
 
+    @mock.patch('app_mailing.services.TaskMailing.revoke_task_by_task_uuid')
     @mock.patch('app_mailing.tasks.send_mailing.apply_async')
-    def test_put_endpoints_if_change_date(self, call_task):
+    def test_put_endpoints_if_change_date(self, call_task, revoke_task):
         task = MockTask()
         call_task.return_value = task
+        revoke_task.return_value = None
 
         mailing = Mailing.objects.filter(status=0).first()
         start_date = timezone.now() + timezone.timedelta(hours=5)
@@ -139,8 +126,10 @@ class MailingTest(AuthAPITestCase):
         self.assertEqual(mailing.task_uuid, mailing_new.task_uuid)
         self.assertEqual(mailing_new.text, data.get('text'))
 
-    def test_delete_endpoints(self):
+    @mock.patch('app_mailing.services.TaskMailing.revoke_task_by_task_uuid')
+    def test_delete_endpoints(self, revoke_task):
         mailings = Mailing.objects.all()
+        revoke_task.return_value = None
 
         for mailing in mailings:
             url = reverse(self.__name_url_mailing_detail, kwargs={'pk': mailing.id})
@@ -156,3 +145,46 @@ class MailingTest(AuthAPITestCase):
                 self.assertEqual(mailing_new.status, 3)
             else:
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class MsgAPITest(AuthAPITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls._create_users()
+        cls._create_data_clients()
+
+    def setUp(self) -> None:
+        mailings = self._create_mailing()
+        self._create_messages(mailings)
+        self.client_admin = self._authorization_admin()
+
+    @mock.patch('requests.post')
+    def test_post_response_http_200(self, requests_post):
+        requests_post.return_value = MockResponseMsgApi(method='post', status_code=200)
+        message = Message.objects.first()
+
+        msg_api = MsgAPI(message.mailing)
+        result = msg_api.post(message)
+        self.assertTrue(result[0])
+        self.assertEqual(result[1].get('code'), 0)
+
+    @mock.patch('requests.post')
+    def test_post_response_http_400(self, requests_post):
+        requests_post.return_value = MockResponseMsgApi(method='post', status_code=400)
+        message = Message.objects.first()
+
+        msg_api = MsgAPI(message.mailing)
+        result = msg_api.post(message)
+        self.assertFalse(result[0])
+        self.assertEqual(result[1], MsgAPI.except_names[1])
+
+    @mock.patch('requests.post')
+    def test_post_response_error(self, requests_post):
+        for except_name in MsgAPI.except_names:
+            requests_post.return_value = MockResponseMsgApi(method='post', name_error=except_name)
+            message = Message.objects.first()
+
+            msg_api = MsgAPI(message.mailing)
+            result = msg_api.post(message)
+            self.assertFalse(result[0])
+            self.assertEqual(result[1], except_name)
