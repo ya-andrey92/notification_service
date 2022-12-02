@@ -7,3 +7,4 @@ celery==5.2.7
 djoser==2.1.0
 djangorestframework-simplejwt==4.8.0
 drf-yasg==1.21.4
+requests==2.28.1

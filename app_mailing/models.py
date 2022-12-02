@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from app_user.models import Client, OperatorCode, Tag
 
 
@@ -26,7 +27,7 @@ class Message(models.Model):
     """Сообщение"""
     STATUS_CHOICES = ((0, 'Not sent'), (1, 'Sent'))
 
-    send_date = models.DateTimeField()
+    send_date = models.DateTimeField(default=timezone.now)
     status = models.IntegerField(choices=STATUS_CHOICES, blank=True, null=True)
     mailing = models.ForeignKey(Mailing, on_delete=models.CASCADE, related_name='message')
     client = models.ForeignKey(Client, on_delete=models.SET_NULL, null=True, related_name='message')
