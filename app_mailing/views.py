@@ -1,11 +1,11 @@
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status, serializers
 import logging
 from .models import Mailing
-from .serializers import MailingSerializer
-from .services import TaskMailing
+from .serializers import MailingSerializer, StatisticsSerializer, StatisticsDetailSerializer
+from .services import TaskMailing, Statistic
 from app_user.paginations import CustomPagination
 
 logger = logging.getLogger(__name__)
@@ -40,3 +40,19 @@ class MailingViewSet(ModelViewSet):
             raise serializers.ValidationError(
                 "Mailing can't be deleted because he sent messages"
             )
+
+
+class StatisticsViewSet(ReadOnlyModelViewSet):
+    serializer_class = StatisticsSerializer
+    permission_classes = (IsAdminUser,)
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        if self.kwargs.get('pk'):
+            return Statistic.get_queryset()
+        return Statistic.get_queryset_list()
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return StatisticsDetailSerializer
+        return super().get_serializer_class()
