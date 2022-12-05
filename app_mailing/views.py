@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class MailingViewSet(ModelViewSet):
+    """Управление рассылками"""
     queryset = Mailing.objects.all()
     serializer_class = MailingSerializer
     permission_classes = (IsAdminUser,)
@@ -43,6 +44,7 @@ class MailingViewSet(ModelViewSet):
 
 
 class StatisticsViewSet(ReadOnlyModelViewSet):
+    """Статистика по рассылкам"""
     serializer_class = StatisticsSerializer
     permission_classes = (IsAdminUser,)
     pagination_class = CustomPagination
