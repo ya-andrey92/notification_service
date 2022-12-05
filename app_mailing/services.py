@@ -14,7 +14,6 @@ from requests.exceptions import Timeout, ConnectionError, HTTPError
 from uuid import UUID
 from typing import Tuple, Dict
 import datetime
-from typing import List
 import csv
 
 from .models import Mailing, Message
@@ -208,3 +207,21 @@ class Statistic:
     def get_queryset_list(cls) -> QuerySet:
         return cls.get_queryset().values('id', 'status', 'send_success', 'send_failed',
                                          'text', 'start_date', 'finish_date')
+
+    @classmethod
+    def get_queryset_to_date(cls, date: datetime) -> QuerySet:
+        """Активные и завершенные рассылки с выбранной по текущую дату"""
+        return cls.get_queryset_list().filter(finish_date__gte=date)
+
+
+def generation_csv(data: QuerySet, date: str) -> str:
+    """Создается файл со статистикой"""
+    filename = f'statistics_{date}.csv'
+    file = settings.FOLDER_STATISTICS / filename
+
+    with open(file, 'w') as csvfile:
+        fieldnames = data[0].keys()
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+    return file
