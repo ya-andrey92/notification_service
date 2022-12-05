@@ -1,14 +1,24 @@
 from django.utils import timezone
+from django.core.mail import EmailMessage
+from django.conf import settings
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 import logging
-from .services import MailingDB, TaskMailingDB, TaskMailing, MsgAPI
+from .services import (
+    MailingDB,
+    TaskMailingDB,
+    TaskMailing,
+    MsgAPI,
+    Statistic,
+    generation_csv
+)
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=None, name='send_mailing')
 def send_mailing(self, mailing_id: int) -> None:
+    """Выполнение задачи по рассылке"""
     task_id = self.request.id
     logger.info(f'[mailing_id={mailing_id}]: run task, task_id={task_id}')
 
@@ -56,3 +66,26 @@ def send_mailing(self, mailing_id: int) -> None:
         TaskMailing.revoke_task_by_task_uuid(task_id, mailing_id)
         mailing_db.set_status('REVOKED')
         logger.info(f'[mailing_id={mailing_id}]: stop task, task_id={task_id}')
+
+
+@shared_task(name='send_statistics')
+def send_statistics() -> None:
+    """Отправка ежедневной статистики админу"""
+    current_date = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday = current_date - timezone.timedelta(days=1)
+    yesterday_str = yesterday.strftime('%d-%m-%Y')
+    data = Statistic.get_queryset_to_date(yesterday)
+
+    if data:
+        file = generation_csv(data, yesterday_str)
+        email = EmailMessage(
+            subject=f'Статистика за {yesterday_str}',
+            body='Статистика по рассылкам',
+            from_email=settings.EMAIL_HOST_USER,
+            to=[settings.EMAIL_HOST_ADMIN]
+        )
+        email.attach_file(file)
+        email.send()
+        logger.info(f'Статистика за {yesterday_str} отправлена')
+    else:
+        logger.info(f'Статистика за {yesterday_str} не обнаружена')

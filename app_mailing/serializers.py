@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.forms import model_to_dict
 from rest_framework import serializers
 import logging
-from .models import Mailing
+from .models import Mailing, Message
 from .services import TaskMailing
 
 logger = logging.getLogger(__name__)
@@ -70,3 +70,26 @@ class MailingSerializer(serializers.ModelSerializer):
                 f'Cannot be changed because the task has already been completed. '
                 f'Create a new mailing.'
             )
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ('id', 'send_date', 'status', 'client_id')
+
+
+class StatisticsSerializer(serializers.ModelSerializer):
+    send_success = serializers.IntegerField()
+    send_failed = serializers.IntegerField()
+
+    class Meta:
+        model = Mailing
+        fields = ('id', 'start_date', 'finish_date', 'text', 'status',
+                  'send_success', 'send_failed')
+
+
+class StatisticsDetailSerializer(StatisticsSerializer):
+    message = MessageSerializer(many=True, read_only=True)
+
+    class Meta(StatisticsSerializer.Meta):
+        fields = StatisticsSerializer.Meta.fields + ('tag', 'code', 'message',)

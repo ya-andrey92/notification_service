@@ -60,6 +60,21 @@ services:
       - backend
     container_name: notification_service-celery_worker
 
+  celery_beat:
+    restart: always
+    build:
+      context: .
+    command: celery -A config beat -l info
+    volumes:
+      - .:/app/
+    depends_on:
+      - db
+      - redis_db
+      - web
+    networks:
+      - backend
+    container_name: notification_service-celery_beat
+
 volumes:
   postgres_data:
   redis_data:

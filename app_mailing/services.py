@@ -1,5 +1,7 @@
 from django.utils import timezone
 from django.db.models.query import QuerySet
+from django.db.models import Sum, Case, When
+from django.db.models.functions import Coalesce
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 from rest_framework import status
@@ -11,6 +13,8 @@ import requests
 from requests.exceptions import Timeout, ConnectionError, HTTPError
 from uuid import UUID
 from typing import Tuple, Dict
+import datetime
+import csv
 
 from .models import Mailing, Message
 from app_user.models import Client
@@ -120,7 +124,7 @@ class TaskMailingDB:
                 Message.objects.bulk_create(batch, batch_size)
             logger.info(f'[mailing_id={self.__mailing.id}]: create message for clients')
 
-    def set_sent_status_message(self, message: Message, send_date: timezone) -> None:
+    def set_sent_status_message(self, message: Message, send_date: datetime) -> None:
         """Обновить статус на отправленный"""
         message.status = 1
         message.send_date = send_date
@@ -184,3 +188,40 @@ class MsgAPI:
 
         logger.exception(f'{log_msg}: {except_name} - {except_msg}', exc_info=None)
         return False, except_name
+
+
+class Statistic:
+    """Статистика по рассылкам"""
+
+    @staticmethod
+    def get_queryset() -> QuerySet:
+        queryset = Mailing.objects.prefetch_related('message')
+        queryset = queryset.annotate(
+            send_success=Coalesce(Sum('message__status'), 0),
+            send_failed=Sum(Case(When(message__status=0, then=1), default=0))
+        )
+        queryset = queryset.order_by('-id')
+        return queryset
+
+    @classmethod
+    def get_queryset_list(cls) -> QuerySet:
+        return cls.get_queryset().values('id', 'status', 'send_success', 'send_failed',
+                                         'text', 'start_date', 'finish_date')
+
+    @classmethod
+    def get_queryset_to_date(cls, date: datetime) -> QuerySet:
+        """Активные и завершенные рассылки с выбранной по текущую дату"""
+        return cls.get_queryset_list().filter(finish_date__gte=date)
+
+
+def generation_csv(data: QuerySet, date: str) -> str:
+    """Создается файл со статистикой"""
+    filename = f'statistics_{date}.csv'
+    file = settings.FOLDER_STATISTICS / filename
+
+    with open(file, 'w') as csvfile:
+        fieldnames = data[0].keys()
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+    return file
