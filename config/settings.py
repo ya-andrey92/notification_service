@@ -151,19 +151,13 @@ EMAIL_HOST_ADMIN = env.str('EMAIL_HOST_ADMIN')
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',
     ],
 }
 
-from datetime import timedelta
-
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=5),
     'AUTH_HEADER_TYPES': ('Bearer', ),
 }
 
@@ -185,7 +179,7 @@ LOGGING = {
             'class': 'logging.FileHandler',
             'level': 'INFO',
             'formatter': 'base',
-            'filename': 'logs/info.log',
+            'filename': 'info.log',
             'mode': 'a',
             'encoding': 'UTF-8',
         }
